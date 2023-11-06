@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Density Map of Mass Shootings</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+
+    <style>
+   
+
+    h1 {
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .states path {
+    fill: #ccc;
+    }
+
+    .state-borders {
+    fill: none;
+    stroke: white; /* Updated stroke color to white */
+    stroke-width: 0.5px;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    pointer-events: none;
+    }
+
+    #tooltip {
+    position: absolute;
+    text-align: left;
+    width: auto; 
+    height: auto; 
+    padding: 8px 12px;
+    font: 13px 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: rgba(255, 255, 255, 0.98); /* Light background with slight transparency */
+    color: #333; /* High contrast text color */
+    border: 1px solid #ddd; /* Light border */
+    border-radius: 4px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    pointer-events: none; /* Doesn't interfere with other mouse events */
+    opacity: 0; /* Start invisible */
+    transition: opacity 0.2s ease-in-out; /* Smooth transition for opacity */
+    }
+
+    p {
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+        font-size: 15px;
+    }
+
+    /* Slider and Play button container */
+#slider {
+  margin-top: 20px;
+  text-align: left;
+}
+
+
+
+/* Styling the play button to look modern with specified colors */
+button#play-button {
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000; /* Black font color */
+  background-color: #fff; /* White background */
+  border: 1px solid #ccc; /* Black border */
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Change background to grey and text to white on hover */
+button#play-button:hover {
+  background-color: #ddd; /* Grey background */
+}
+
+  input[type="range"] {
+    -webkit-appearance: none; /* Override default look */
+    background-color: #ccc;
+  background-size: 100% 100%;
+  height: 7px; /* Specified height */
+outline: none; /* Remove outline */
+opacity: 1; /* Set transparency (cross-browser) */
+border-radius: 10px;
+-webkit-transition: .2s; /* 0.2 seconds transition on hover */
+transition: opacity .2s;
+}
+
+
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    appearance: none;
+    width: 15px; /* Set a specific slider handle width */
+    height: 15px; /* Slider handle height */
+    background: #646464; 
+    cursor: pointer; /* Cursor on hover */
+    border-radius: 50%; /* Circular borders */
+    border: none; /* No borders */
+    transition: background .3s ease-in-out; /* Smooth transition for background color */
+  }
+
+  input[type="range"]:hover::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    background: black; /* Darken the slider handle on hover */
+  }
+
+
+    
+    </style>
+</head>
+<body>
+    <h1>Mass Shooting Cases in the US (1966-2023)</h1>
+    <p>N=193 Shootings, 1'391 Deaths</p>
+
+    <div id="slider">
+    <input type="range" id="year-slider" name="year" min="1966" max="2023" value="1966">
+    <button id="play-button">Play</button>
+    </div>
+
+<div id="map"></div>
+<div id="tooltip"></div>
+
+
+    <script>
+
+d3.json('https://d3js.org/us-10m.v1.json').then(function(us) {
+d3.csv("violence project.csv").then(function(shootingsData) {
+
+    const width = 1300;
+    const height = 600;
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const locationLabels = {'0':'K-12 school', '1':'College/university', '2':'Place of civic importance', '3':'House of worship', '4':'Retail', '5':'Restaurant/bar/nightclub', '6':'Office', '7':'Place of residence', '8':'Outdoors', '9':'Warehouse/factory', '10':'Post office', '99':'Others'}
+
+
+    const svg = d3.select("#map").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+    
+// Define a projection
+  var projection = d3.geoAlbersUsa()
+                     .translate([480, height / 2]) // translate to center of screen
+                     .scale([1280]); // scale things down so see entire US
+
+  var path = d3.geoPath();
+  const tooltip = d3.select("#tooltip");
+
+  // Define a color scale with D3
+  const colorScale = d3.scaleOrdinal()
+  .domain(['4', '5', '9', '6', '8', '7', '0', '99']) // Your location codes
+  .range(['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+  '#8c564b', '#e377c2', '#a34c02']); // Colors corresponding to location codes
+
+  
+  // Define a scale for the size of the dots
+  var radiusScale = d3.scaleSqrt()
+                      .domain([0, d3.max(shootingsData, function(d) { return +d['Number Killed']; })])
+                      .range([0, 20]); // Adjust the output range based on the visual design
+
+
+const yearLabel = svg.append("text")
+  .attr("class", "yearLabel")
+  .attr("x", 950)// Positioned to the top right
+  .attr("y", 30)
+  .attr('fill', '#ccc')
+  .attr('font-family', 'Helvetica Neue, Arial')
+  .attr('font-weight', 500)
+  .attr('font-size', 40)
+  .attr("text-anchor", "end") // Ensures the text aligns right
+  .text("1966"); // Default text, the first year in your data
+
+  // Legend setup
+const legend = svg.append("g")
+  .attr("class", "legend")
+  .attr("transform", "translate(" + (width - 300) + ",150)"); // Adjust the position accordingly
+
+// Title for the legend
+legend.append("text")
+  .attr("class", "legend-title")
+  .attr("x", 0)
+  .attr("y", -20) // Adjust this value as needed
+  .attr("text-anchor", "start")
+  .style("font-size", "16px")
+  .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
+  .style("font-weight", "bold")
+  .text("Location");
+
+  // Convert data to numeric and filter out invalid coordinates
+  shootingsData = shootingsData.map(function(d) {
+    d.Longitude = +d.Longitude;
+    d.Latitude = +d.Latitude;
+    d['Number Killed'] = +d['Number Killed'];
+    d.projection = projection([d.Longitude, d.Latitude]);
+    return d;
+  }).filter(function(d) {
+    // Only keep data where projection is not null
+    return d.projection;
+  });
+
+  svg.append("g")
+      .attr("class", "states")
+    .selectAll("path")
+    .data(topojson.feature(us, us.objects.states).features)
+    .enter().append("path")
+      .attr("d", path);
+
+  svg.append("path")
+      .attr("class", "state-borders")
+      .attr("d", path(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; })));
+
+      var circlesGroup = svg.append("g").attr("class", "circles-group");
+
+  // Function to update the map based on the selected year
+function updateMap(selectedYear) {
+  var filteredData = shootingsData.filter(function(d) {
+    return d.Year <= selectedYear;
+  });
+
+  if (selectedYear === 1966) {
+    yearLabel.text("1966");
+  } else {
+    yearLabel.text("1966 - " + selectedYear);
+  }
+
+  var circles = circlesGroup.selectAll("circle")
+    .data(filteredData, function(d) { return d.id; });
+
+  circles.enter()
+    .append("circle")
+    .merge(circles)
+    .attr("cx", function(d) { return d.projection[0]; })
+    .attr("cy", function(d) { return d.projection[1]; })
+    .attr("r", function(d) { return radiusScale(d['Number Killed']); })
+    .attr("fill", function(d) { return colorScale(d.Location_group); }) // Set the fill color based on location code
+    .attr("fill-opacity", 0.4)
+
+       .on("mouseover", function(d) {
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", .9);
+                const monthName = monthNames[d.Month - 1];
+
+                tooltip.html(`<strong>${d.City} (${d.State})</strong><br/>${monthName} ${parseInt(d.Day, 10)},  ${parseInt(d.Year, 10)}<br/>Killed: ${d['Number Killed']}`)
+                .style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mousemove", function(d) {
+            tooltip.style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+    
+        circles.exit().remove();
+    }
+// Initialize the map with the starting year
+updateMap(1966);
+
+// Global variables to manage state
+var playing = false;
+var timer; // Declare timer for clearInterval access
+var currentYear;
+
+// Function to animate the map
+function animateMap() {
+  var endYear = parseInt(d3.select("#year-slider").attr("max"), 10);
+  timer = setInterval(function() {
+    currentYear = parseInt(d3.select("#year-slider").property("value"), 10);
+    if (currentYear >= endYear) {
+      clearInterval(timer);
+      d3.select("#play-button").text("Play");
+      playing = false;
+    } else {
+      currentYear += 1;
+      d3.select("#year-slider").property("value", currentYear);
+      updateMap(currentYear);
+    }
+  }, 300); 
+}
+
+// Update the map whenever the slider value changes
+d3.select("#year-slider").on("input", function() {
+  currentYear = +this.value;
+  updateMap(currentYear);
+  if (playing) {
+    clearInterval(timer); // Stop the animation if it's playing
+    d3.select("#play-button").text("Play");
+    playing = false;
+  }
+});
+
+// Play button logic
+d3.select("#play-button").on("click", function() {
+  if (playing) {
+    d3.select(this).text("Play");
+    clearInterval(timer); // Stop the animation
+    playing = false;
+  } else {
+    d3.select(this).text("Pause");
+    playing = true;
+    animateMap();
+  }
+});
+
+// Initial setup
+currentYear = parseInt(d3.select("#year-slider").property("value"), 10);
+updateMap(currentYear); // Initialize the map with the current year
+
+
+
+
+
+
+
+
+// Legend items
+const legendItemSize = 6; // Radius of the legend item circles
+const legendSpacing = 18; // Spacing between legend items
+
+
+
+colorScale.domain().forEach(function(locationCode, index){
+  const legendItem = legend.append("g")
+    .attr("transform", "translate(0," + (index * legendSpacing) + ")");
+
+  // Color circle
+  legendItem.append("circle")
+    .attr("cx", legendItemSize)
+    .attr("cy", legendItemSize)
+    .attr("r", legendItemSize)
+    .style("fill", colorScale(locationCode))
+    .attr("fill-opacity", 0.4)
+
+// Text label
+legendItem.append("text")
+  .attr("x", legendItemSize * 2 + legendSpacing)
+  .attr("y", legendItemSize + 4)
+  .style("font-size", "13px") // Same as tooltip
+  .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif") // Same as tooltip
+  .style("fill", "#333") // Same text color as tooltip
+  .text(locationLabels[locationCode])
+  .attr("alignment-baseline", "middle");
+
+});
+
+});
+});
+    </script>
+</body>
+</html>
