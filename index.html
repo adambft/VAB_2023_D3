@@ -109,25 +109,172 @@
         background: black; /* Darken the slider handle on hover */
       }
 
+      #tooltip2 {
+        position: absolute;
+        text-align: left;
+        width: auto; 
+        height: auto; 
+        padding: 8px 12px;
+        font: 13px 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: rgba(255, 255, 255, 0.98); /* Light background with slight transparency */
+        color: #333; /* High contrast text color */
+        border: 1px solid #ddd; /* Light border */
+        border-radius: 4px; /* Rounded corners */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        pointer-events: none; /* Doesn't interfere with other mouse events */
+        opacity: 0; /* Start invisible */
+        transition: opacity 0.2s ease-in-out; /* Smooth transition for opacity */
+      }
+
+      button#play-button2 {
+        padding: 5px 10px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #000; /* Black font color */
+        background-color: #fff; /* White background */
+        border: 1px solid #ccc; /* Black border */
+        border-radius: 4px;
+        cursor: pointer;
+        outline: none;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Change background to grey and text to white on hover */
+      button#play-button2:hover {
+        background-color: #ddd; /* Grey background */
+      }
+
+      .main-outer-container {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+      }
+
+      @media (max-width: 800px) {
+        .main-outer-container {
+          flex-direction: column;
+          margin-bottom: 100px;
+        }
+        
+        .container-right {
+          margin-left: 20px;
+        }
+
+        .legend-stuff {
+          font-size: calc( 0.3rem + 1vw );
+        }
+
+        .bottom-container {
+          padding: 10px 10px;
+        }
+      }
+
+      .bottom-container {
+        width: 100%;
+        padding: 10px 100px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        overflow-y: scroll;
+        background-color: rgb(229, 229, 229);
+      }
+
+      .container-left{
+        margin-top: 20px;
+        margin-left: 20px;
+        flex: 1 1 auto;
+      }
+
+      .container-right {
+        margin-top: 20px;
+        flex: 1 1 auto;
+      }
+
       #map {
         zoom: 0.6;
         -moz-transform: scale(0.6);
+      }
+
+      .legend-stuff {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      }
+
+      .legend-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 10px;
+        aspect-ratio: 1/1;
+      }
+
+      .legend-sub-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px;
       }
     </style>
 </head>
 
 <body>
-  <div class="half-screen">
-    <h1>Mass Shooting Cases in the US (1966-2023)</h1>
-    <p>N=193 Shootings, 1'391 Deaths</p>
-  
-    <div id="slider">
-      <input type="range" id="year-slider" name="year" min="1966" max="2023" value="1966">
-      <button id="play-button">Play</button>
+  <div class="main-outer-container">
+    <div class="container-left">
+      <h1>Mass Shooting Incidents in the US (1966-2023)</h1>
+      <p>N=193 Shootings, 1'391 Deaths. Circle radius = Number of deaths.</p>
+      <div id="slider">
+        <input type="range" id="year-slider" name="year" min="1966" max="2023" value="1966">
+        <button id="play-button">Play</button>
+      </div>
+      <div id="map"></div>
+      <div id="tooltip"></div>
     </div>
   
-    <div id="map"></div>
-    <div id="tooltip"></div>
+    <div class="container-right">
+      <h1>Locations of US Mass Shootings (1966-2023)</h1>
+      <p>N=193 Shootings.</p>
+      <div id="slider">
+        <!--<input type="range" id="year-slider2" name="year" min="1966" max="2023" value="1966">-->
+        <button id="play-button2">Play</button>
+      </div>
+      <div id="chart"></div>
+      <div id="tooltip2"></div>
+    </div>
+  </div>
+
+  <div class="bottom-container">
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #EEDA88;"></div>
+      <h4 class="legend-stuff">Commercial Establishments</h4>
+    </div>
+
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #A2CCD2;"></div>
+      <h4 class="legend-stuff">Workplace Premises</h4>
+    </div>
+
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #DCA4D6;"></div>
+      <h4 class="legend-stuff">School</h4>
+    </div>
+
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #A1E0A9;"></div>
+      <h4 class="legend-stuff">Outdoors</h4>
+    </div>
+
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #DE9D97;"></div>
+      <h4 class="legend-stuff">Place of Residence</h4>
+    </div>
+
+    <div class="legend-sub-container">
+      <div class="legend-dot" style="background-color: #B4B7A0;"></div>
+      <h4 class="legend-stuff">Others</h4>
+    </div>
   </div>
 
 
@@ -138,7 +285,7 @@
         const width = 1300;
         const height = 600;
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const locationLabels = {'0':'School', '4':'Commercial Establishments', '6':'Workplace Premises', '7':'Place of residence', '8':'Outdoors', '99':'Others'}
+        const locationLabels = {'0':'School', '4':'Commercial Establishments', '6':'Workplace Premises', '7':'Place of Residence', '8':'Outdoors', '99':'Others'}
 
 
         const svg = d3.select("#map").append("svg")
@@ -178,20 +325,20 @@
           .text("1966"); // Default text, the first year in your data
 
           // Legend setup
-        const legend = svg.append("g")
-          .attr("class", "legend")
-          .attr("transform", "translate(" + (width - 300) + ",150)"); // Adjust the position accordingly
+        // const legend = svg.append("g")
+        //   .attr("class", "legend")
+        //   .attr("transform", "translate(" + (width - 300) + ",150)"); // Adjust the position accordingly
 
         // Title for the legend
-        legend.append("text")
-          .attr("class", "legend-title")
-          .attr("x", 0)
-          .attr("y", -20) // Adjust this value as needed
-          .attr("text-anchor", "start")
-          .style("font-size", "16px")
-          .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
-          .style("font-weight", "bold")
-          .text("Location");
+        // legend.append("text")
+        //   .attr("class", "legend-title")
+        //   .attr("x", 0)
+        //   .attr("y", -20) // Adjust this value as needed
+        //   .attr("text-anchor", "start")
+        //   .style("font-size", "16px")
+        //   .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
+        //   .style("font-weight", "bold")
+        //   .text("Location");
 
         // Convert data to numeric and filter out invalid coordinates
         shootingsData = shootingsData.map(function(d) {
@@ -248,7 +395,7 @@
                         .style("opacity", .9);
                         const monthName = monthNames[d.Month - 1];
 
-                        tooltip.html(`<strong>${d.City} (${d.State})</strong><br/>${monthName} ${parseInt(d.Day, 10)},  ${parseInt(d.Year, 10)}<br/>Killed: ${d['Number Killed']}`)
+                        tooltip.html(`<strong>${d.City} (${d.State})</strong><br/>${monthName} ${parseInt(d.Day, 10)},  ${parseInt(d.Year, 10)}<br/>Deaths: ${d['Number Killed']}`)
                         .style("left", (d3.event.pageX) + "px")
                         .style("top", (d3.event.pageY - 28) + "px");
                 })
@@ -322,7 +469,6 @@
         const legendSpacing = 18; // Spacing between legend items
 
 
-
         colorScale.domain().forEach(function(locationCode, index){
           const legendItem = legend.append("g")
             .attr("transform", "translate(0," + (index * legendSpacing) + ")");
@@ -345,8 +491,179 @@
             .text(locationLabels[locationCode])
             .attr("alignment-baseline", "middle");
         });
-      });
+                  
+                  });
+          
+    // CODE FOR CHART 2
+    
+    d3.csv("chart2.csv").then(function(data) {
+        
+      const margin = {top: 20, right: 20, bottom: 50, left: 20}; 
+      const width2 = 600 - margin.left - margin.right;
+    const height2 = 450 - margin.top - margin.bottom; // Increased total height and adjusted for margins
+
+        const locationLabels = {'0':'School', '4':'Commercial Establishments', '6':'Workplace Premises', '7':'Place of Residence', '8':'Outdoors', '99':'Others'}
+
+        const svg2 = d3.select("#chart").append("svg")
+    .attr("width", width2 + margin.left + margin.right)
+    .attr("height", height2 + margin.top + margin.bottom)
+  .append("g") // Append a 'g' element that will hold the chart
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
+        // Parse the year to a JavaScript Date object
+        data.forEach(function(d) {
+          d.Year = d3.timeParse("%Y")(d.Year);
+           d.Count = +d.Count;
+        });
+
+        // Sort data by year
+        data.sort((a, b) => a.Year - b.Year);
+
+        // Set up the scales
+        const xScale = d3.scaleTime()
+          .domain(d3.extent(data, d => d.Year))
+          .range([0, width2]);
+
+        // Create linear scale y
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.Count)])
+            .range([height2, 0]);
+
+          const color = d3.scaleOrdinal()
+              .domain(['4', '6', '0', '8', '7', '99']) // Your location codes
+              .range(['#dbab18', '#1d86d1', '#b023db', '#1cb86c', '#b3123f' ,'#4c5254']); // Colors corresponding to location codes
+
+        // Define the line
+        const line = d3.line()
+            .x(d => xScale(d.Year))
+            .y(d => yScale(d.Count));
+
+        // Group the data by location category
+        const dataNest = d3.nest()
+          .key(function(d) { return d.Location; })
+          .entries(data);
+        
+          const tooltip2 = d3.select("#tooltip2");
+
+          //const yearLabel = svg2.append("text")
+         // .attr("class", "yearLabel")
+          //.attr("x", 550)// Positioned to the top right
+          //.attr("y", 27)
+          //.attr('fill', '#ccc')
+          //.attr('font-family', 'Helvetica Neue, Arial')
+          //.attr('font-weight', 500)
+         // .attr('font-size', 25)
+         // .attr("text-anchor", "end") // Ensures the text aligns right
+          //.text("1966"); // Default text, the first year in your data
+
+
+        // Add the X Axis
+        svg2.append("g")
+            .call(d3.axisBottom(xScale))
+            .attr("transform", "translate(0," + height2 + ")")
+            .style("color", "grey"); 
+
+
+
+// Create y-axis with explicit tick values at intervals of 10
+const maxYValue = d3.max(data, d => d.Count);
+const tickValues = d3.range(0, maxYValue + 10, 10); // Adjust the range if your data maximum is not a multiple of 10
+
+// Add y axis
+svg2.append("g")
+  .attr("class", "y-axis")
+  .call(d3.axisLeft(yScale)
+    .tickSize(-width2)
+    .tickValues(tickValues) // Set the tick values at intervals of 10
+    .tickFormat(d3.format("d")) // Remove any formatting, like comma for thousands
+  )
+  .style("color", "grey")
+  .selectAll(".tick line") // Select all the tick lines
+    .style("stroke", "lightgrey") // Style the grid lines with light grey color
+    .style("opacity", 0.7);
+    
+
+  // Add a group for each line
+var lineGroups = svg2.selectAll(".lineGroup")
+    .data(dataNest)
+    .enter().append("g")
+    .attr("class", "lineGroup");
+
+// Add the line path generating the line 
+lineGroups.append("path")
+    .attr("class", "line")
+    .attr("d", function(d) { return line(d.values); })
+    .style("fill", "none")
+    .style("stroke", function(d) { return color(d.key); })
+    .style("opacity", 0.5)
+    .style("stroke-width", 4)
+    .attr("stroke-dasharray", function(d) {
+        var totalLength = this.getTotalLength(); // Get the length of the path
+        return totalLength + " " + totalLength; // Set up the dash array
+    })
+    .attr("stroke-dashoffset", function(d) {
+        return this.getTotalLength(); // Offset equals path length
     });
+
+
+// Create invisible circles at each data point
+lineGroups.selectAll("circle")
+    .data(function(d) { return d.values; })
+    .enter().append("circle")
+    .attr("class", "line-circle")
+    .attr("cx", function(d) { return xScale(d.Year); })
+    .attr("cy", function(d) { return yScale(d.Count); })
+    .attr("r", 6) // Radius of the circle, make it larger for easier hover
+    .style("fill", "none")
+    .style("pointer-events", "all") // Make sure the circles can be hovered
+
+    .on("mouseover", function(d) {
+                    tooltip2.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                        tooltip2.html(`<strong>${d.Location_str}</strong> <br/> Year: ${d.Year.getFullYear()} <br/> Cumulative Incidents: ${d.Count}`)
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mousemove", function(d) {
+                    tooltip2.style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mouseout", function(d) {
+                    tooltip2.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+
+
+
+                function resetAnimation() {
+  svg2.selectAll(".line")
+    .attr("stroke-dashoffset", function(d) {
+      return this.getTotalLength();
+    });
+}
+
+// Play button logic
+d3.select("#play-button2").on("click", function() {
+  // Reset the animation
+  resetAnimation();
+
+  // Start the animation again
+  svg2.selectAll(".line")
+    .transition()
+    .duration(2000) // Animation duration
+    .ease(d3.easeLinear) // Linear animation ease
+    .attr("stroke-dashoffset", 0); // Animate the offset to zero
+}
+
+
+);
+   
+    
+  });
+    });
+
   </script>
 </body>
 </html>
